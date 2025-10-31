@@ -146,4 +146,8 @@
       filter: drop-shadow(0 0 20px hsl(249 58% 69% / 0.8));
     }
   }
+  
+  .hover-scale {
+    @apply transition-transform duration-300 hover:scale-[1.02];
+  }
 }

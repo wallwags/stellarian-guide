@@ -40,11 +40,11 @@ const Onboarding = () => {
       if (profileError) throw profileError;
       
       toast({
-        title: "Dados salvos!",
+        title: "Perfil salvo! ✨",
         description: "Seu mapa cósmico está sendo preparado...",
       });
       
-      navigate("/dashboard");
+      navigate("/home");
     } catch (error: any) {
       toast({
         title: "Erro",
