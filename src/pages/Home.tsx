@@ -1,14 +1,56 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon, Sparkles, Share2, Bookmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Transits {
+  date: string;
+  sun: { sign: string; message: string };
+  moon: { sign: string; phase: string; message: string };
+  dailyEnergy: string;
+  advices: string[];
+}
 
 const Home = () => {
   const { toast } = useToast();
   const [currentAdviceIndex, setCurrentAdviceIndex] = useState(0);
+  const [transits, setTransits] = useState<Transits | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const dailyAdvices = [
+  useEffect(() => {
+    loadDailyTransits();
+  }, []);
+
+  const loadDailyTransits = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-daily-transits');
+      
+      if (error) throw error;
+      if (data?.transits) {
+        setTransits(data.transits);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar trânsitos:", error);
+      // Fallback to default data
+      setTransits({
+        date: new Date().toISOString().split('T')[0],
+        sun: { sign: "Escorpião", message: "O Sol ilumina temas de transformação" },
+        moon: { sign: "Peixes", phase: "Crescente", message: "A Lua traz sensibilidade" },
+        dailyEnergy: "Energia de crescimento e intuição",
+        advices: [
+          "Permita-se sentir todas as emoções que surgirem hoje",
+          "O universo conspira a seu favor",
+          "Cultive momentos de silêncio interior",
+        ],
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const dailyAdvices = transits?.advices || [
     "A energia de hoje pede introspecção. Reserve um momento para ouvir sua voz interior.",
     "Os trânsitos favorecem novas conexões. Esteja aberto ao inesperado.",
     "Momento propício para cuidar do corpo e da mente. Pratique autocuidado.",
@@ -27,6 +69,18 @@ const Home = () => {
       description: "Sua mensagem foi lançada ao cosmos",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
+        <Card className="cosmic-card">
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">Consultando o cosmos...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
@@ -47,7 +101,7 @@ const Home = () => {
         </CardHeader>
         <CardContent>
           <p className="text-lg leading-relaxed text-muted-foreground">
-            Os astros se alinham para trazer clareza e renovação. É um dia para se conectar com sua essência e abraçar as transformações.
+            {transits?.dailyEnergy || "Os astros se alinham para trazer clareza e renovação"}
           </p>
         </CardContent>
       </Card>
@@ -57,11 +111,11 @@ const Home = () => {
         <Card className="cosmic-card">
           <CardHeader className="pb-3">
             <Sun className="w-8 h-8 text-secondary mb-2" />
-            <CardTitle className="font-serif text-lg">Sol em Escorpião</CardTitle>
+            <CardTitle className="font-serif text-lg">Sol em {transits?.sun.sign}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Profundidade e transformação regem este período
+              {transits?.sun.message || "Profundidade e transformação"}
             </p>
           </CardContent>
         </Card>
@@ -69,11 +123,11 @@ const Home = () => {
         <Card className="cosmic-card">
           <CardHeader className="pb-3">
             <Moon className="w-8 h-8 text-accent mb-2" />
-            <CardTitle className="font-serif text-lg">Lua em Peixes</CardTitle>
+            <CardTitle className="font-serif text-lg">Lua em {transits?.moon.sign}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              Intuição e sensibilidade amplificadas hoje
+              {transits?.moon.phase} - {transits?.moon.message || "Intuição amplificada"}
             </p>
           </CardContent>
         </Card>

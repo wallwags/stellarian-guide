@@ -1,1 +1,10 @@
 project_id = "ihgxpjqeblgdbiayrixv"
+
+[functions.analyze-dream]
+verify_jwt = true
+
+[functions.generate-astro-map]
+verify_jwt = true
+
+[functions.get-daily-transits]
+verify_jwt = false

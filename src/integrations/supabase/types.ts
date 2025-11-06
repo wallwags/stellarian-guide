@@ -14,9 +14,37 @@ export type Database = {
   }
   public: {
     Tables: {
+      dreams: {
+        Row: {
+          analysis: Json | null
+          created_at: string | null
+          dream_text: string
+          id: string
+          is_favorite: boolean | null
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string | null
+          dream_text: string
+          id?: string
+          is_favorite?: boolean | null
+          user_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string | null
+          dream_text?: string
+          id?: string
+          is_favorite?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           ascendant_sign: string | null
+          astro_data: Json | null
           birth_date: string
           birth_latitude: number | null
           birth_longitude: number | null
@@ -31,6 +59,7 @@ export type Database = {
         }
         Insert: {
           ascendant_sign?: string | null
+          astro_data?: Json | null
           birth_date: string
           birth_latitude?: number | null
           birth_longitude?: number | null
@@ -45,6 +74,7 @@ export type Database = {
         }
         Update: {
           ascendant_sign?: string | null
+          astro_data?: Json | null
           birth_date?: string
           birth_latitude?: number | null
           birth_longitude?: number | null

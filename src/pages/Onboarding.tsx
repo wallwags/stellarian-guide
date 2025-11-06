@@ -37,13 +37,26 @@ const Onboarding = () => {
           birth_place: birthPlace,
         });
 
-      if (profileError) throw profileError;
-      
-      toast({
-        title: "Perfil salvo! ✨",
-        description: "Seu mapa cósmico está sendo preparado...",
+      if (profileError) {
+        console.error("Erro ao salvar perfil:", profileError);
+        toast({
+          title: "Erro ao salvar",
+          description: "Não foi possível salvar seus dados. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate astro map in background
+      supabase.functions.invoke('generate-astro-map').catch((err) => {
+        console.error("Erro ao gerar mapa (background):", err);
       });
-      
+
+      toast({
+        title: "✨ Perfil criado",
+        description: "Bem-vindo ao Cosmos! Seu mapa astral está sendo preparado.",
+      });
+
       navigate("/home");
     } catch (error: any) {
       toast({
