@@ -65,6 +65,51 @@ function getMoonSign(date: Date): string {
   return signs[signIndex % 12];
 }
 
+// Get rich sun message
+function getSunMessage(sign: string): string {
+  const messages: Record<string, string> = {
+    "Áries": "Sol em Áries desperta coragem, iniciativa e o espírito pioneiro. Hora de começar novos projetos.",
+    "Touro": "Sol em Touro convida à estabilidade, prazer sensorial e construção de valores duradouros.",
+    "Gêmeos": "Sol em Gêmeos ativa comunicação, curiosidade e conexões sociais vibrantes.",
+    "Câncer": "Sol em Câncer ilumina emoções, família e o cuidado com quem você ama.",
+    "Leão": "Sol em Leão brilha com criatividade, autoexpressão e generosidade de coração.",
+    "Virgem": "Sol em Virgem traz organização, análise e aprimoramento dos detalhes.",
+    "Libra": "Sol em Libra busca equilíbrio, harmonia e conexões autênticas.",
+    "Escorpião": "Sol em Escorpião mergulha em transformação, intensidade e mistérios profundos.",
+    "Sagitário": "Sol em Sagitário expande horizontes, busca significado e aventura.",
+    "Capricórnio": "Sol em Capricórnio constrói estruturas, metas de longo prazo e responsabilidade.",
+    "Aquário": "Sol em Aquário inova, liberta e conecta com a visão coletiva.",
+    "Peixes": "Sol em Peixes dissolve fronteiras, mergulha na compaixão e intuição espiritual."
+  };
+  return messages[sign] || `Sol em ${sign} ilumina sua jornada única.`;
+}
+
+// Get rich moon message
+function getMoonMessage(sign: string, phase: string): string {
+  const baseMessages: Record<string, string> = {
+    "Áries": "impulsividade emocional e coragem para sentir",
+    "Touro": "necessidade de conforto, segurança e prazer",
+    "Gêmeos": "mente ágil e curiosidade emocional",
+    "Câncer": "sensibilidade profunda e necessidade de acolhimento",
+    "Leão": "expressão dramática das emoções e desejo de reconhecimento",
+    "Virgem": "análise dos sentimentos e busca por ordem emocional",
+    "Libra": "equilíbrio emocional e busca por harmonia relacional",
+    "Escorpião": "intensidade emocional e transformação profunda",
+    "Sagitário": "otimismo emocional e busca por significado",
+    "Capricórnio": "controle emocional e responsabilidade afetiva",
+    "Aquário": "distanciamento emocional e perspectiva racional",
+    "Peixes": "empatia profunda e sensibilidade transcendental"
+  };
+  
+  const phasePrefix = phase === "Cheia" 
+    ? "Na Lua Cheia," 
+    : phase === "Nova" 
+    ? "Na Lua Nova," 
+    : "Nesta fase lunar,";
+  
+  return `${phasePrefix} Lua em ${sign} traz ${baseMessages[sign] || "conexão emocional única"}.`;
+}
+
 // Generate daily energy message based on transits
 function getDailyEnergyMessage(sunSign: string, moonPhase: string, moonSign: string): string {
   const energyMessages = {
@@ -107,12 +152,12 @@ serve(async (req) => {
       date: now.toISOString().split('T')[0],
       sun: {
         sign: sunSign,
-        message: `O Sol em ${sunSign} ilumina temas de transformação e autenticidade.`,
+        message: getSunMessage(sunSign),
       },
       moon: {
         sign: moonSign,
         phase: moonPhase,
-        message: `A Lua ${moonPhase} em ${moonSign} traz ${dailyEnergy.toLowerCase().split('.')[0]?.replace('🌑', '').replace('🌒', '').replace('🌓', '').replace('🌔', '').replace('🌕', '').replace('🌖', '').replace('🌗', '').replace('🌘', '').trim()}.`,
+        message: getMoonMessage(moonSign, moonPhase),
       },
       dailyEnergy,
       advices,

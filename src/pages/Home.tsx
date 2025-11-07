@@ -13,6 +13,20 @@ interface Transits {
   advices: string[];
 }
 
+const getMoonPhaseEmoji = (phase: string = "Cheia"): string => {
+  const phases: Record<string, string> = {
+    "Nova": "🌑",
+    "Crescente": "🌒",
+    "Quarto Crescente": "🌓",
+    "Crescente Gibosa": "🌔",
+    "Cheia": "🌕",
+    "Minguante Gibosa": "🌖",
+    "Quarto Minguante": "🌗",
+    "Minguante": "🌘"
+  };
+  return phases[phase] || "🌕";
+};
+
 const Home = () => {
   const { toast } = useToast();
   const [currentAdviceIndex, setCurrentAdviceIndex] = useState(0);
@@ -24,12 +38,42 @@ const Home = () => {
   }, []);
 
   const loadDailyTransits = async () => {
+    setIsLoading(true);
+    
+    // Try cache first
+    const cached = localStorage.getItem('daily_transits_cache');
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+        const SIX_HOURS = 6 * 60 * 60 * 1000;
+        
+        if (age < SIX_HOURS) {
+          console.log("✅ Usando trânsitos do cache");
+          setTransits(data);
+          setIsLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error("Erro ao ler cache:", e);
+      }
+    }
+    
+    // Fetch fresh data
     try {
       const { data, error } = await supabase.functions.invoke('get-daily-transits');
       
       if (error) throw error;
       if (data?.transits) {
         setTransits(data.transits);
+        
+        // Save to cache
+        localStorage.setItem('daily_transits_cache', JSON.stringify({
+          data: data.transits,
+          timestamp: Date.now()
+        }));
+        
+        console.log("✅ Trânsitos atualizados e salvos no cache");
       }
     } catch (error) {
       console.error("Erro ao carregar trânsitos:", error);
@@ -85,7 +129,7 @@ const Home = () => {
   return (
     <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
       {/* Daily Energy Card */}
-      <Card className="cosmic-card fade-in">
+      <Card className="cosmic-card fade-in bg-gradient-to-br from-primary/5 to-secondary/5">
         <CardHeader>
           <CardTitle className="font-serif text-2xl flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary glow" />
@@ -106,32 +150,42 @@ const Home = () => {
         </CardContent>
       </Card>
 
-      {/* Sun & Moon Today */}
-      <div className="grid grid-cols-2 gap-4 fade-in">
-        <Card className="cosmic-card">
-          <CardHeader className="pb-3">
-            <Sun className="w-8 h-8 text-secondary mb-2" />
-            <CardTitle className="font-serif text-lg">Sol em {transits?.sun.sign}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {transits?.sun.message || "Profundidade e transformação"}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Sol Card - Destaque Visual */}
+      <Card className="cosmic-card fade-in bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+        <CardHeader className="text-center pb-6">
+          <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-4 glow">
+            <Sun className="w-12 h-12 text-white" />
+          </div>
+          <CardTitle className="font-serif text-3xl">
+            Sol em {transits?.sun.sign}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-lg leading-relaxed text-muted-foreground">
+            {transits?.sun.message || "O Sol ilumina sua autenticidade e propósito de vida"}
+          </p>
+        </CardContent>
+      </Card>
 
-        <Card className="cosmic-card">
-          <CardHeader className="pb-3">
-            <Moon className="w-8 h-8 text-accent mb-2" />
-            <CardTitle className="font-serif text-lg">Lua em {transits?.moon.sign}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {transits?.moon.phase} - {transits?.moon.message || "Intuição amplificada"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Lua Card - Destaque Visual com Fase */}
+      <Card className="cosmic-card fade-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+        <CardHeader className="text-center pb-6">
+          <div className="mx-auto w-20 h-20 flex items-center justify-center mb-4">
+            <span className="text-6xl">{getMoonPhaseEmoji(transits?.moon.phase)}</span>
+          </div>
+          <CardTitle className="font-serif text-3xl">
+            Lua em {transits?.moon.sign}
+          </CardTitle>
+          <CardDescription className="text-base">
+            Fase: {transits?.moon.phase}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center">
+          <p className="text-lg leading-relaxed text-muted-foreground">
+            {transits?.moon.message || "A Lua governa suas emoções e intuição"}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Advice Carousel */}
       <Card className="cosmic-card fade-in">

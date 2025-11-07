@@ -5,11 +5,45 @@ import { Globe, Sun, Moon, Star, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface AstroData {
-  sun: { sign: string; house: string };
-  moon: { sign: string; house: string };
-  ascendant: { sign: string; house: string };
+interface PlanetData {
+  sign: string;
+  degree?: number;
+  house?: number;
 }
+
+interface AstroData {
+  sun: PlanetData;
+  moon: PlanetData;
+  ascendant: PlanetData;
+  mercury?: PlanetData;
+  venus?: PlanetData;
+  mars?: PlanetData;
+  jupiter?: PlanetData;
+  saturn?: PlanetData;
+  uranus?: PlanetData;
+  neptune?: PlanetData;
+  pluto?: PlanetData;
+  houses?: any[];
+  aspects?: any[];
+  isApproximation?: boolean;
+}
+
+const getPlanetIcon = (planet: string): string => {
+  const icons: Record<string, string> = {
+    sun: "☀️",
+    moon: "🌙",
+    mercury: "☿️",
+    venus: "♀️",
+    mars: "♂️",
+    jupiter: "♃",
+    saturn: "♄",
+    uranus: "♅",
+    neptune: "♆",
+    pluto: "♇",
+    ascendant: "⬆️"
+  };
+  return icons[planet.toLowerCase()] || "⭐";
+};
 
 const Map = () => {
   const { toast } = useToast();
@@ -35,9 +69,9 @@ const Map = () => {
       } else if (profile?.sun_sign) {
         // Use basic signs if full astro_data not available
         setAstroData({
-          sun: { sign: profile.sun_sign, house: "Casa 1" },
-          moon: { sign: profile.moon_sign || "Peixes", house: "Casa 12" },
-          ascendant: { sign: profile.ascendant_sign || "Áries", house: "Casa 1" },
+          sun: { sign: profile.sun_sign, house: 1 },
+          moon: { sign: profile.moon_sign || "Peixes", house: 12 },
+          ascendant: { sign: profile.ascendant_sign || "Áries" },
         });
       }
     } catch (error) {
@@ -57,8 +91,10 @@ const Map = () => {
       if (data?.astroData) {
         setAstroData(data.astroData);
         toast({
-          title: "✨ Mapa gerado",
-          description: "Seu mapa astral foi calculado com sucesso",
+          title: data.isApproximation ? "⚠️ Mapa aproximado" : "✨ Mapa gerado",
+          description: data.isApproximation 
+            ? "Usando cálculo simplificado (API indisponível)"
+            : "Seu mapa astral foi calculado com precisão",
         });
       }
     } catch (error) {
@@ -72,12 +108,6 @@ const Map = () => {
       setIsGenerating(false);
     }
   };
-
-  const planetData = astroData ? [
-    { name: "Sol", sign: astroData.sun.sign, house: astroData.sun.house, icon: Sun },
-    { name: "Lua", sign: astroData.moon.sign, house: astroData.moon.house, icon: Moon },
-    { name: "Ascendente", sign: astroData.ascendant.sign, house: astroData.ascendant.house, icon: Star },
-  ] : [];
 
   const handleShare = () => {
     toast({
@@ -98,6 +128,20 @@ const Map = () => {
     );
   }
 
+  const allPlanets = astroData ? [
+    { key: "sun", name: "Sol", data: astroData.sun },
+    { key: "moon", name: "Lua", data: astroData.moon },
+    { key: "ascendant", name: "Ascendente", data: astroData.ascendant },
+    { key: "mercury", name: "Mercúrio", data: astroData.mercury },
+    { key: "venus", name: "Vênus", data: astroData.venus },
+    { key: "mars", name: "Marte", data: astroData.mars },
+    { key: "jupiter", name: "Júpiter", data: astroData.jupiter },
+    { key: "saturn", name: "Saturno", data: astroData.saturn },
+    { key: "uranus", name: "Urano", data: astroData.uranus },
+    { key: "neptune", name: "Netuno", data: astroData.neptune },
+    { key: "pluto", name: "Plutão", data: astroData.pluto },
+  ].filter(p => p.data) : [];
+
   return (
     <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
       {/* Header Card */}
@@ -111,6 +155,7 @@ const Map = () => {
               </CardTitle>
               <CardDescription>
                 Seu universo interior revelado
+                {astroData?.isApproximation && " (cálculo aproximado)"}
               </CardDescription>
             </div>
             {!astroData && (
@@ -149,26 +194,50 @@ const Map = () => {
         </Card>
       )}
 
-      {/* Planet Cards */}
-      {planetData.length > 0 && (
-        <div className="space-y-4 fade-in">
-          {planetData.map((planet, index) => {
-            const Icon = planet.icon;
-            return (
-              <Card key={index} className="cosmic-card">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-6 h-6 text-primary" />
-                    <div>
-                      <CardTitle className="font-serif text-lg">{planet.name}</CardTitle>
-                      <CardDescription>{planet.sign} - {planet.house}</CardDescription>
-                    </div>
+      {/* All Planets */}
+      {allPlanets.length > 0 && (
+        <Card className="cosmic-card fade-in">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">Planetas no Seu Mapa</CardTitle>
+            <CardDescription>Posições no momento do nascimento</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {allPlanets.map((planet) => (
+                <div key={planet.key} className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{getPlanetIcon(planet.key)}</span>
+                    <span className="font-semibold">{planet.name}</span>
                   </div>
-                </CardHeader>
-              </Card>
-            );
-          })}
-        </div>
+                  <p className="text-sm text-muted-foreground">
+                    {planet.data.sign}
+                    {planet.data.degree !== undefined && planet.data.degree > 0 && ` ${planet.data.degree.toFixed(2)}°`}
+                    {planet.data.house && ` • Casa ${planet.data.house}`}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Houses */}
+      {astroData?.houses && astroData.houses.length > 0 && (
+        <Card className="cosmic-card fade-in">
+          <CardHeader>
+            <CardTitle className="font-serif text-lg">Casas Astrológicas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {astroData.houses.map((house: any, index: number) => (
+                <div key={index} className="p-2 rounded bg-secondary/10 text-center">
+                  <span className="text-xs text-muted-foreground">Casa {house.number || index + 1}</span>
+                  <p className="text-sm font-medium">{house.sign}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Astro Wheel Placeholder */}
