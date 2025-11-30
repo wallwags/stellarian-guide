@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sun, Moon, Sparkles, Share2, Bookmark } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import TransitInsights from "@/components/TransitInsights";
 
 interface Transits {
   date: string;
@@ -235,6 +236,17 @@ const Home = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Trânsitos Importantes */}
+      <div className="mt-8 space-y-4">
+        <div>
+          <h2 className="text-2xl font-serif mb-2">Trânsitos Importantes</h2>
+          <p className="text-sm text-muted-foreground">
+            Conselhos práticos baseados nos movimentos planetários atuais
+          </p>
+        </div>
+        <TransitInsights />
+      </div>
     </div>
   );
 };
