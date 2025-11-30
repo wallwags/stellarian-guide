@@ -116,9 +116,19 @@ serve(async (req) => {
     try {
       console.log("Tentando FreeAstrologyAPI.com...");
       
+      const freeAstrologyApiKey = Deno.env.get('FREEASTROLOGY_API_KEY');
+      
+      if (!freeAstrologyApiKey) {
+        console.warn("⚠️ FREEASTROLOGY_API_KEY não configurada, usando fallback");
+        throw new Error("API key não configurada");
+      }
+      
       const apiResponse = await fetch('https://json.freeastrologyapi.com/western/natal-wheel-chart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-api-key': freeAstrologyApiKey
+        },
         body: JSON.stringify({
           year: birthDate.getFullYear(),
           month: month,
@@ -133,11 +143,13 @@ serve(async (req) => {
       });
 
       if (!apiResponse.ok) {
+        const errorText = await apiResponse.text();
+        console.error(`❌ FreeAstrologyAPI erro ${apiResponse.status}: ${errorText}`);
         throw new Error(`API retornou status ${apiResponse.status}`);
       }
 
       const apiData = await apiResponse.json();
-      console.log("Resposta FreeAstrologyAPI:", JSON.stringify(apiData).substring(0, 500));
+      console.log("✅ FreeAstrologyAPI resposta:", JSON.stringify(apiData).substring(0, 500));
 
       // Parse API response
       const planets = apiData.output?.planet_positions || {};
@@ -174,7 +186,7 @@ serve(async (req) => {
         isApproximation: false
       };
 
-      console.log("✅ FreeAstrologyAPI funcionou!");
+      console.log(`✅ FreeAstrologyAPI funcionou! ${Object.keys(planets).length} planetas calculados`);
 
     } catch (apiError) {
       console.error("FreeAstrologyAPI falhou, usando fallback:", apiError);
