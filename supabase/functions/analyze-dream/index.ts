@@ -121,12 +121,23 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Save dream to database
+    // Get user from JWT
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.error("Erro ao obter usuário:", userError);
+      return new Response(
+        JSON.stringify({ error: "Não autorizado - usuário não encontrado" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Save dream to database with explicit user_id
     const { data: dream, error: dbError } = await supabaseClient
       .from('dreams')
       .insert({
         dream_text: dreamText,
         analysis: analysis,
+        user_id: user.id,
       })
       .select()
       .single();
