@@ -14,46 +14,66 @@ function getCurrentTransits() {
   const sunSign = getSunSign(now);
   const moonSign = getMoonSign(now);
   
+  const getElement = (sign: string): string => {
+    const elements: Record<string, string> = {
+      "Áries": "fogo", "Leão": "fogo", "Sagitário": "fogo",
+      "Touro": "terra", "Virgem": "terra", "Capricórnio": "terra",
+      "Gêmeos": "ar", "Libra": "ar", "Aquário": "ar",
+      "Câncer": "agua", "Escorpião": "agua", "Peixes": "agua"
+    };
+    return elements[sign] || "fogo";
+  };
+
   return [
     {
-      planet: "Sol",
-      icon: "☉",
-      sign: sunSign.sign,
-      degree: `${sunSign.degree}°`,
-      startDate: sunSign.startDate,
-      endDate: sunSign.endDate,
-    },
-    {
-      planet: "Lua",
-      icon: "☽",
-      sign: moonSign.sign,
-      degree: `${moonSign.degree}°`,
-      startDate: moonSign.startDate,
-      endDate: moonSign.endDate,
-    },
-    {
       planet: "Mercúrio",
-      icon: "☿",
+      icon: "☿️",
       sign: getMercurySign(dayOfYear),
       degree: `${(dayOfYear * 3) % 30}°`,
       startDate: now.toISOString().split('T')[0],
       endDate: addDays(now, 20).toISOString().split('T')[0],
+      element: getElement(getMercurySign(dayOfYear)),
+      lifeArea: "comunicacao"
     },
     {
       planet: "Vênus",
-      icon: "♀",
+      icon: "♀️",
       sign: getVenusSign(dayOfYear),
       degree: `${(dayOfYear * 2) % 30}°`,
       startDate: now.toISOString().split('T')[0],
       endDate: addDays(now, 25).toISOString().split('T')[0],
+      element: getElement(getVenusSign(dayOfYear)),
+      lifeArea: "relacionamentos"
     },
     {
       planet: "Marte",
-      icon: "♂",
+      icon: "♂️",
       sign: getMarsSign(dayOfYear),
       degree: `${(dayOfYear) % 30}°`,
       startDate: now.toISOString().split('T')[0],
       endDate: addDays(now, 45).toISOString().split('T')[0],
+      element: getElement(getMarsSign(dayOfYear)),
+      lifeArea: "carreira"
+    },
+    {
+      planet: "Júpiter",
+      icon: "♃",
+      sign: "Gêmeos ℞",
+      degree: "18°",
+      startDate: addDays(now, -60).toISOString().split('T')[0],
+      endDate: addDays(now, 90).toISOString().split('T')[0],
+      element: "ar",
+      lifeArea: "autoconhecimento"
+    },
+    {
+      planet: "Saturno",
+      icon: "♄",
+      sign: "Peixes",
+      degree: "2°",
+      startDate: addDays(now, -90).toISOString().split('T')[0],
+      endDate: addDays(now, 120).toISOString().split('T')[0],
+      element: "agua",
+      lifeArea: "espiritualidade"
     }
   ];
 }
