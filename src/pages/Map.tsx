@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Globe, Sun, Moon, Star, Share2, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import { Globe, Sun, Moon, Share2, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,7 +9,6 @@ interface PlanetData {
   sign: string;
   degree?: number;
   house?: number;
-  meaning?: string;
 }
 
 interface AstroData {
@@ -29,113 +28,88 @@ interface AstroData {
   isApproximation?: boolean;
 }
 
-interface Transits {
-  date: string;
-  sun: { sign: string; message: string };
-  moon: { sign: string; phase: string; message: string };
-  dailyEnergy: string;
-}
-
-const getPlanetIcon = (planet: string): string => {
-  const icons: Record<string, string> = {
-    sun: "☀️",
-    moon: "🌙",
-    mercury: "☿️",
-    venus: "♀️",
-    mars: "♂️",
-    jupiter: "♃",
-    saturn: "♄",
-    uranus: "♅",
-    neptune: "♆",
-    pluto: "♇",
-    ascendant: "⬆️"
-  };
-  return icons[planet.toLowerCase()] || "⭐";
+const PLANET_INFO: Record<string, { name: string; icon: string; meaning: (sign: string) => string }> = {
+  sun: {
+    name: "Sol",
+    icon: "☀️",
+    meaning: (sign) => `Sua essência e vitalidade se expressam através das qualidades de ${sign}. O Sol representa seu núcleo, sua identidade mais profunda, aquilo que você veio brilhar nesta vida. Em ${sign}, você encontra força na energia deste signo.`
+  },
+  moon: {
+    name: "Lua",
+    icon: "🌙",
+    meaning: (sign) => `Suas emoções e instintos são coloridos por ${sign}. A Lua governa suas necessidades emocionais profundas, memórias ancestrais e como você nutre a si mesmo e aos outros. Em ${sign}, suas emoções fluem com a natureza deste signo.`
+  },
+  ascendant: {
+    name: "Ascendente",
+    icon: "⬆️",
+    meaning: (sign) => `A máscara que você mostra ao mundo tem as características de ${sign}. O Ascendente é sua primeira impressão, como os outros te veem antes de conhecer sua essência. Em ${sign}, você se apresenta com as qualidades deste signo.`
+  },
+  mercury: {
+    name: "Mercúrio",
+    icon: "☿️",
+    meaning: (sign) => `Sua comunicação e pensamento seguem o estilo de ${sign}. Mercúrio governa como você processa informações, aprende, ensina e se expressa verbalmente. Em ${sign}, sua mente opera com a lógica e ritmo deste signo.`
+  },
+  venus: {
+    name: "Vênus",
+    icon: "♀️",
+    meaning: (sign) => `Seu jeito de amar e valorizar a beleza reflete ${sign}. Vênus indica seus gostos, valores estéticos, como você dá e recebe afeto. Em ${sign}, você ama e aprecia segundo as qualidades deste signo.`
+  },
+  mars: {
+    name: "Marte",
+    icon: "♂️",
+    meaning: (sign) => `Sua energia de ação e assertividade se manifesta como ${sign}. Marte mostra como você luta pelo que quer, sua coragem e impulso vital. Em ${sign}, você age e compete com o estilo deste signo.`
+  },
+  jupiter: {
+    name: "Júpiter",
+    icon: "♃",
+    meaning: (sign) => `Sua expansão e busca por significado seguem ${sign}. Júpiter indica onde você encontra abundância, sorte e crescimento. Em ${sign}, você expande e busca sabedoria através das qualidades deste signo.`
+  },
+  saturn: {
+    name: "Saturno",
+    icon: "♄",
+    meaning: (sign) => `Suas responsabilidades e estruturas têm a natureza de ${sign}. Saturno mostra onde você precisa amadurecer, seus limites e lições kármicas. Em ${sign}, você constrói disciplina e maturidade segundo este signo.`
+  },
+  uranus: {
+    name: "Urano",
+    icon: "♅",
+    meaning: (sign) => `Sua originalidade e desejo de mudança se expressam via ${sign}. Urano indica onde você é revolucionário, inovador e busca liberdade. Em ${sign}, você rompe padrões com a energia deste signo.`
+  },
+  neptune: {
+    name: "Netuno",
+    icon: "♆",
+    meaning: (sign) => `Sua espiritualidade e imaginação fluem através de ${sign}. Netuno conecta você ao transcendente, aos sonhos e à arte. Em ${sign}, sua sensibilidade mística se expressa pelas qualidades deste signo.`
+  },
+  pluto: {
+    name: "Plutão",
+    icon: "♇",
+    meaning: (sign) => `Sua transformação profunda acontece nas áreas de ${sign}. Plutão indica onde você renasce, enfrenta sombras e encontra poder pessoal. Em ${sign}, você se transforma radicalmente segundo este signo.`
+  }
 };
 
-const getPlanetMeaning = (planet: string, sign: string): string => {
-  const meanings: Record<string, string> = {
-    sun: `Sua essência e vitalidade se expressam através das qualidades de ${sign}. É o centro do seu ser.`,
-    moon: `Suas emoções e instintos são coloridos por ${sign}. Governa suas necessidades emocionais profundas.`,
-    ascendant: `A máscara que você mostra ao mundo tem as características de ${sign}. É sua primeira impressão.`,
-    mercury: `Sua comunicação e pensamento seguem o estilo de ${sign}. Governa como você processa informações.`,
-    venus: `Seu jeito de amar e valorizar a beleza reflete ${sign}. Indica seus gostos e valores.`,
-    mars: `Sua energia de ação e assertividade se manifesta como ${sign}. Mostra como você luta pelo que quer.`,
-    jupiter: `Sua expansão e busca por significado seguem ${sign}. Indica onde você encontra abundância.`,
-    saturn: `Suas responsabilidades e estruturas têm a natureza de ${sign}. Mostra onde você precisa amadurecer.`,
-    uranus: `Sua originalidade e desejo de mudança se expressam via ${sign}. Indica onde você é revolucionário.`,
-    neptune: `Sua espiritualidade e imaginação fluem através de ${sign}. Conecta você ao transcendente.`,
-    pluto: `Sua transformação profunda acontece nas áreas de ${sign}. Indica onde você renasce.`,
-  };
-  return meanings[planet.toLowerCase()] || `Influência de ${sign} nesta área da sua vida.`;
-};
-
-const getMoonPhaseEmoji = (phase: string = "Cheia"): string => {
-  const phases: Record<string, string> = {
-    "Nova": "🌑",
-    "Crescente": "🌒",
-    "Quarto Crescente": "🌓",
-    "Crescente Gibosa": "🌔",
-    "Cheia": "🌕",
-    "Minguante Gibosa": "🌖",
-    "Quarto Minguante": "🌗",
-    "Minguante": "🌘"
-  };
-  return phases[phase] || "🌕";
-};
+const HOUSE_MEANINGS = [
+  "Identidade, aparência física, primeira impressão",
+  "Recursos, valores pessoais, dinheiro",
+  "Comunicação, irmãos, viagens curtas",
+  "Lar, família, raízes emocionais",
+  "Criatividade, romance, filhos, diversão",
+  "Saúde, rotina, trabalho diário",
+  "Relacionamentos, parcerias, casamento",
+  "Transformação, heranças, sexualidade",
+  "Filosofia, viagens longas, educação superior",
+  "Carreira, reputação, status social",
+  "Amizades, grupos, esperanças",
+  "Espiritualidade, inconsciente, isolamento"
+];
 
 const Map = () => {
   const { toast } = useToast();
   const [astroData, setAstroData] = useState<AstroData | null>(null);
-  const [transits, setTransits] = useState<Transits | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     loadAstroMap();
-    loadDailyTransits();
   }, []);
-
-  const loadDailyTransits = async () => {
-    // Try cache first
-    const cached = localStorage.getItem('daily_transits_cache');
-    if (cached) {
-      try {
-        const { data, timestamp } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-        const SIX_HOURS = 6 * 60 * 60 * 1000;
-        
-        if (age < SIX_HOURS) {
-          setTransits(data);
-          return;
-        }
-      } catch (e) {
-        console.error("Erro ao ler cache:", e);
-      }
-    }
-    
-    // Fetch fresh data
-    try {
-      const { data, error } = await supabase.functions.invoke('get-daily-transits');
-      if (error) throw error;
-      if (data?.transits) {
-        setTransits(data.transits);
-        localStorage.setItem('daily_transits_cache', JSON.stringify({
-          data: data.transits,
-          timestamp: Date.now()
-        }));
-      }
-    } catch (error) {
-      console.error("Erro ao carregar trânsitos:", error);
-      // Fallback
-      setTransits({
-        date: new Date().toISOString().split('T')[0],
-        sun: { sign: "Sagitário", message: "O Sol em Sagitário traz otimismo e expansão" },
-        moon: { sign: "Peixes", phase: "Crescente", message: "A Lua traz sensibilidade e intuição" },
-        dailyEnergy: "Energia de crescimento, otimismo e busca por conhecimento"
-      });
-    }
-  };
 
   const loadAstroMap = async () => {
     try {
@@ -149,11 +123,10 @@ const Map = () => {
       if (profile?.astro_data) {
         setAstroData(profile.astro_data as unknown as AstroData);
       } else if (profile?.sun_sign) {
-        // Use basic signs if full astro_data not available
         setAstroData({
-          sun: { sign: profile.sun_sign, house: 1 },
-          moon: { sign: profile.moon_sign || "Peixes", house: 12 },
-          ascendant: { sign: profile.ascendant_sign || "Áries" },
+          sun: { sign: profile.sun_sign, house: 1, degree: 0 },
+          moon: { sign: profile.moon_sign || "Câncer", house: 4, degree: 0 },
+          ascendant: { sign: profile.ascendant_sign || "Áries", degree: 0 },
         });
       }
     } catch (error) {
@@ -210,19 +183,15 @@ const Map = () => {
     );
   }
 
-  const allPlanets = astroData ? [
-    { key: "sun", name: "Sol", data: astroData.sun },
-    { key: "moon", name: "Lua", data: astroData.moon },
-    { key: "ascendant", name: "Ascendente", data: astroData.ascendant },
-    { key: "mercury", name: "Mercúrio", data: astroData.mercury },
-    { key: "venus", name: "Vênus", data: astroData.venus },
-    { key: "mars", name: "Marte", data: astroData.mars },
-    { key: "jupiter", name: "Júpiter", data: astroData.jupiter },
-    { key: "saturn", name: "Saturno", data: astroData.saturn },
-    { key: "uranus", name: "Urano", data: astroData.uranus },
-    { key: "neptune", name: "Netuno", data: astroData.neptune },
-    { key: "pluto", name: "Plutão", data: astroData.pluto },
-  ].filter(p => p.data) : [];
+  // Build planet list from astroData
+  const planetKeys = ["sun", "moon", "ascendant", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto"];
+  const planets = planetKeys
+    .filter(key => astroData?.[key as keyof AstroData])
+    .map(key => ({
+      key,
+      data: astroData![key as keyof AstroData] as PlanetData,
+      info: PLANET_INFO[key]
+    }));
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
@@ -247,120 +216,159 @@ const Map = () => {
         </CardHeader>
       </Card>
 
-      {/* Daily Energy Card */}
-      <Card className="cosmic-card fade-in bg-gradient-to-br from-primary/5 to-secondary/5">
-        <CardHeader>
-          <CardTitle className="font-serif text-xl flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary glow" />
-            Energia de Hoje
-          </CardTitle>
-          <CardDescription>
-            {new Date().toLocaleDateString('pt-BR', { 
-              weekday: 'long', 
-              day: 'numeric',
-              month: 'long'
-            })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed text-muted-foreground">
-            {transits?.dailyEnergy || "Os astros se alinham para trazer clareza e renovação"}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Sun Card - Visual Highlight */}
-      <Card className="cosmic-card fade-in bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
-        <CardHeader className="text-center pb-4">
-          <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-4 glow">
-            <Sun className="w-12 h-12 text-white" />
-          </div>
-          <CardTitle className="font-serif text-2xl">
-            Sol em {transits?.sun.sign || astroData?.sun.sign}
-          </CardTitle>
-          {astroData?.sun.degree && (
-            <CardDescription>{astroData.sun.degree.toFixed(2)}° • Casa {astroData.sun.house || 1}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="text-base leading-relaxed text-muted-foreground">
-            {transits?.sun.message || getPlanetMeaning('sun', astroData?.sun.sign || 'Áries')}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Moon Card - Visual Highlight with Phase */}
-      <Card className="cosmic-card fade-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
-        <CardHeader className="text-center pb-4">
-          <div className="mx-auto w-20 h-20 flex items-center justify-center mb-4">
-            <span className="text-6xl">{getMoonPhaseEmoji(transits?.moon.phase)}</span>
-          </div>
-          <CardTitle className="font-serif text-2xl">
-            Lua em {transits?.moon.sign || astroData?.moon.sign}
-          </CardTitle>
-          <CardDescription className="text-base">
-            Fase: {transits?.moon.phase || "Crescente"}
-            {astroData?.moon.degree && ` • ${astroData.moon.degree.toFixed(2)}° • Casa ${astroData.moon.house || 12}`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="text-base leading-relaxed text-muted-foreground">
-            {transits?.moon.message || getPlanetMeaning('moon', astroData?.moon.sign || 'Câncer')}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* All Planets - Detailed */}
-      {allPlanets.length > 0 && (
-        <Card className="cosmic-card fade-in">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Todos os Planetas</CardTitle>
-            <CardDescription>Posições no momento do seu nascimento</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {allPlanets.map((planet) => (
-                <div key={planet.key} className="p-4 rounded-lg bg-primary/5 border border-primary/10">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-2xl">{getPlanetIcon(planet.key)}</span>
-                    <div className="flex-1">
-                      <span className="font-semibold text-lg">{planet.name}</span>
-                      <span className="text-muted-foreground ml-2">
-                        em {planet.data.sign}
-                        {planet.data.degree !== undefined && planet.data.degree > 0 && ` ${planet.data.degree.toFixed(2)}°`}
-                        {planet.data.house && ` • Casa ${planet.data.house}`}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {getPlanetMeaning(planet.key, planet.data.sign)}
-                  </p>
+      {/* Big Three - Sun, Moon, Ascendant */}
+      <div className="grid gap-4">
+        {/* Sun Card */}
+        {astroData?.sun && (
+          <Card className="cosmic-card fade-in bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center glow">
+                  <Sun className="w-10 h-10 text-white" />
                 </div>
-              ))}
+                <div>
+                  <CardTitle className="font-serif text-2xl">Sol em {astroData.sun.sign}</CardTitle>
+                  <CardDescription className="text-base">
+                    {astroData.sun.degree !== undefined && astroData.sun.degree > 0 && `${astroData.sun.degree.toFixed(1)}° • `}
+                    Casa {astroData.sun.house || 1}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base leading-relaxed text-muted-foreground">
+                {PLANET_INFO.sun.meaning(astroData.sun.sign)}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Moon Card */}
+        {astroData?.moon && (
+          <Card className="cosmic-card fade-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 flex items-center justify-center">
+                  <Moon className="w-12 h-12 text-indigo-400" />
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-2xl">Lua em {astroData.moon.sign}</CardTitle>
+                  <CardDescription className="text-base">
+                    {astroData.moon.degree !== undefined && astroData.moon.degree > 0 && `${astroData.moon.degree.toFixed(1)}° • `}
+                    Casa {astroData.moon.house || 4}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base leading-relaxed text-muted-foreground">
+                {PLANET_INFO.moon.meaning(astroData.moon.sign)}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ascendant Card */}
+        {astroData?.ascendant && (
+          <Card className="cosmic-card fade-in bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                  <span className="text-3xl">⬆️</span>
+                </div>
+                <div>
+                  <CardTitle className="font-serif text-2xl">Ascendente em {astroData.ascendant.sign}</CardTitle>
+                  <CardDescription className="text-base">
+                    {astroData.ascendant.degree !== undefined && astroData.ascendant.degree > 0 && `${astroData.ascendant.degree.toFixed(1)}°`}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-base leading-relaxed text-muted-foreground">
+                {PLANET_INFO.ascendant.meaning(astroData.ascendant.sign)}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* All Other Planets */}
+      <Card className="cosmic-card fade-in">
+        <CardHeader>
+          <CardTitle className="font-serif text-lg">Posições Planetárias</CardTitle>
+          <CardDescription>Todos os planetas no momento do seu nascimento</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {planets
+            .filter(p => !["sun", "moon", "ascendant"].includes(p.key))
+            .map((planet) => (
+              <div key={planet.key} className="p-4 rounded-lg bg-primary/5 border border-primary/10">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="text-3xl">{planet.info.icon}</span>
+                  <div className="flex-1">
+                    <span className="font-serif font-semibold text-lg">{planet.info.name}</span>
+                    <span className="text-muted-foreground ml-2">
+                      em {planet.data.sign}
+                      {planet.data.degree !== undefined && planet.data.degree > 0 && ` • ${planet.data.degree.toFixed(1)}°`}
+                      {planet.data.house && ` • Casa ${planet.data.house}`}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {planet.info.meaning(planet.data.sign)}
+                </p>
+              </div>
+            ))}
+          
+          {planets.filter(p => !["sun", "moon", "ascendant"].includes(p.key)).length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Clique em atualizar para calcular todos os planetas</p>
+              <Button onClick={generateMap} disabled={isGenerating} className="mt-4">
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Calcular Mapa Completo
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Houses */}
-      {astroData?.houses && astroData.houses.length > 0 && (
-        <Card className="cosmic-card fade-in">
-          <CardHeader>
-            <CardTitle className="font-serif text-lg">Casas Astrológicas</CardTitle>
-            <CardDescription>As 12 áreas da vida no seu mapa</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+      <Card className="cosmic-card fade-in">
+        <CardHeader>
+          <CardTitle className="font-serif text-lg">Casas Astrológicas</CardTitle>
+          <CardDescription>As 12 áreas da vida no seu mapa</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {astroData?.houses && astroData.houses.length > 0 ? (
+            <div className="grid gap-3">
               {astroData.houses.map((house: any, index: number) => (
-                <div key={index} className="p-3 rounded-lg bg-secondary/10 text-center">
-                  <span className="text-xs text-muted-foreground">Casa {house.number || index + 1}</span>
-                  <p className="text-sm font-medium">{house.sign}</p>
+                <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/10">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">{house.number || index + 1}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{house.sign}</span>
+                      {house.degree && <span className="text-xs text-muted-foreground">{house.degree.toFixed(1)}°</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{HOUSE_MEANINGS[index]}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {Array.from({ length: 12 }, (_, i) => (
+                <div key={i} className="p-3 rounded-lg bg-secondary/10 text-center">
+                  <span className="text-xs text-muted-foreground">Casa {i + 1}</span>
+                  <p className="text-sm font-medium text-muted-foreground/50">—</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Astro Wheel Placeholder */}
       <Card className="cosmic-card fade-in">
@@ -378,8 +386,9 @@ const Map = () => {
 
       {/* Actions */}
       <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 gap-2">
-          Comparar com Hoje
+        <Button variant="outline" className="flex-1 gap-2" onClick={generateMap} disabled={isGenerating}>
+          {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Recalcular Mapa
         </Button>
         <Button variant="outline" className="gap-2" onClick={handleShare}>
           <Share2 className="w-4 h-4" />

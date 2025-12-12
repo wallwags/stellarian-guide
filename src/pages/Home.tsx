@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Share2, Bookmark, Droplets, Wind, Mountain, Flame, MessageCircle, Users, Heart, Briefcase, Home as HomeIcon, Brain, Coins, Compass } from "lucide-react";
+import { Sparkles, Share2, Bookmark, Droplets, Wind, Mountain, Flame, MessageCircle, Users, Heart, Briefcase, Home as HomeIcon, Brain, Coins, Compass, Sun, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Lock } from "lucide-react";
 
 interface Transit {
   planet: string;
@@ -17,6 +16,20 @@ interface Transit {
   advice: string;
   element: "agua" | "ar" | "terra" | "fogo";
   lifeArea: string;
+}
+
+interface DailyLuminary {
+  sign: string;
+  degree: number;
+  startDate: string;
+  endDate: string;
+  message: string;
+  deities: { pantheon: string; deity: string }[];
+}
+
+interface DailyData {
+  sun: DailyLuminary;
+  moon: DailyLuminary & { phase: string };
 }
 
 const elementIcons: Record<string, { icon: React.ElementType; label: string; color: string }> = {
@@ -39,9 +52,24 @@ const lifeAreaIcons: Record<string, { icon: React.ElementType; label: string }> 
 
 const FREE_TRANSITS = 2;
 
+const getMoonPhaseEmoji = (phase: string = "Cheia"): string => {
+  const phases: Record<string, string> = {
+    "Nova": "🌑",
+    "Crescente": "🌒",
+    "Quarto Crescente": "🌓",
+    "Crescente Gibosa": "🌔",
+    "Cheia": "🌕",
+    "Minguante Gibosa": "🌖",
+    "Quarto Minguante": "🌗",
+    "Minguante": "🌘"
+  };
+  return phases[phase] || "🌕";
+};
+
 const Home = () => {
   const { toast } = useToast();
   const [transits, setTransits] = useState<Transit[]>([]);
+  const [dailyData, setDailyData] = useState<DailyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -52,7 +80,7 @@ const Home = () => {
     setIsLoading(true);
     
     // Try cache first (12 hours)
-    const cached = localStorage.getItem('transit_insights_cache');
+    const cached = localStorage.getItem('transit_insights_v2_cache');
     if (cached) {
       try {
         const { data, timestamp } = JSON.parse(cached);
@@ -61,7 +89,8 @@ const Home = () => {
         
         if (age < TWELVE_HOURS) {
           console.log("✅ Usando insights do cache");
-          setTransits(data);
+          setTransits(data.transits || []);
+          setDailyData(data.daily || null);
           setIsLoading(false);
           return;
         }
@@ -78,10 +107,11 @@ const Home = () => {
       
       if (data?.transits) {
         setTransits(data.transits);
+        setDailyData(data.daily || null);
         
         // Save to cache
-        localStorage.setItem('transit_insights_cache', JSON.stringify({
-          data: data.transits,
+        localStorage.setItem('transit_insights_v2_cache', JSON.stringify({
+          data: { transits: data.transits, daily: data.daily },
           timestamp: Date.now()
         }));
         
@@ -99,8 +129,8 @@ const Home = () => {
           degree: "15°23'",
           startDate: "2025-12-05",
           endDate: "2025-12-24",
-          message: "Mercúrio em Sagitário expande sua mente e traz sede por conhecimento. É momento de explorar novas ideias, filosofias e perspectivas que ampliem sua visão de mundo.",
-          advice: "Inicie aquele curso ou leitura que você vem adiando. Viagens curtas ou conversas com pessoas de culturas diferentes trarão insights valiosos.",
+          message: "Mercúrio em Sagitário expande sua mente e traz sede por conhecimento.",
+          advice: "Inicie aquele curso ou leitura que você vem adiando.",
           element: "fogo",
           lifeArea: "comunicacao"
         },
@@ -111,48 +141,44 @@ const Home = () => {
           degree: "8°12'",
           startDate: "2025-12-07",
           endDate: "2026-01-03",
-          message: "Vênus em Aquário traz um desejo de liberdade nos relacionamentos. Você valoriza conexões autênticas e não convencionais.",
-          advice: "Permita-se conhecer pessoas diferentes do seu círculo habitual. Amizades podem se transformar em algo mais profundo.",
+          message: "Vênus em Aquário traz desejo de liberdade nos relacionamentos.",
+          advice: "Permita-se conhecer pessoas diferentes do seu círculo habitual.",
           element: "ar",
           lifeArea: "relacionamentos"
-        },
-        {
-          planet: "Marte",
-          icon: "♂️",
-          sign: "Leão",
-          degree: "23°45'",
-          startDate: "2025-11-28",
-          endDate: "2026-01-10",
-          message: "Marte em Leão desperta sua coragem criativa e desejo de brilhar. Sua energia está alta para liderar projetos e expressar sua individualidade.",
-          advice: "Canalize essa energia em projetos criativos ou esportivos. Evite conflitos de ego desnecessários.",
-          element: "fogo",
-          lifeArea: "carreira"
-        },
-        {
-          planet: "Júpiter",
-          icon: "♃",
-          sign: "Gêmeos ℞",
-          degree: "18°56'",
-          startDate: "2025-10-15",
-          endDate: "2026-02-20",
-          message: "Júpiter retrógrado em Gêmeos pede revisão de crenças e expansão através do estudo interno.",
-          advice: "Revise seus projetos de aprendizado. O conhecimento que você já possui precisa ser integrado antes de buscar mais.",
-          element: "ar",
-          lifeArea: "autoconhecimento"
-        },
-        {
-          planet: "Saturno",
-          icon: "♄",
-          sign: "Peixes",
-          degree: "2°34'",
-          startDate: "2025-09-01",
-          endDate: "2026-05-30",
-          message: "Saturno em Peixes traz responsabilidade com sua vida espiritual e emocional. Estrutura e disciplina se encontram com intuição.",
-          advice: "Crie uma rotina de práticas contemplativas. Meditação ou terapia ajudarão a dar forma aos seus sonhos.",
-          element: "agua",
-          lifeArea: "espiritualidade"
         }
       ]);
+      
+      setDailyData({
+        sun: {
+          sign: "Sagitário",
+          degree: 21,
+          startDate: "2025-11-22",
+          endDate: "2025-12-21",
+          message: "O Sol em Sagitário ilumina o caminho da expansão, aventura e busca por significado.",
+          deities: [
+            { pantheon: "Africano", deity: "Oxóssi" },
+            { pantheon: "Grego", deity: "Zeus" },
+            { pantheon: "Egípcio", deity: "Rá" },
+            { pantheon: "Hindu", deity: "Vishnu" },
+            { pantheon: "Nórdico", deity: "Odin" }
+          ]
+        },
+        moon: {
+          sign: "Peixes",
+          degree: 12,
+          startDate: "2025-12-11",
+          endDate: "2025-12-13",
+          phase: "Crescente",
+          message: "A Lua em Peixes desperta sua intuição e sensibilidade emocional.",
+          deities: [
+            { pantheon: "Africano", deity: "Iemanjá" },
+            { pantheon: "Grego", deity: "Poseidon" },
+            { pantheon: "Egípcio", deity: "Ísis" },
+            { pantheon: "Hindu", deity: "Chandra" },
+            { pantheon: "Nórdico", deity: "Freyja" }
+          ]
+        }
+      });
     } finally {
       setIsLoading(false);
     }
@@ -203,7 +229,7 @@ const Home = () => {
         <CardHeader>
           <CardTitle className="font-serif text-2xl flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-primary glow" />
-            Trânsitos de Hoje
+            Meu Dia
           </CardTitle>
           <CardDescription>
             {new Date().toLocaleDateString('pt-BR', { 
@@ -213,12 +239,82 @@ const Home = () => {
             })}
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <p className="text-base text-muted-foreground">
-            Conselhos práticos baseados nos movimentos planetários atuais
-          </p>
-        </CardContent>
       </Card>
+
+      {/* Sun of Today Card */}
+      {dailyData?.sun && (
+        <Card className="cosmic-card fade-in bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center glow">
+                <Sun className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="font-serif text-xl">Sol em {dailyData.sun.sign}</CardTitle>
+                <CardDescription>
+                  {dailyData.sun.degree}° • {formatDate(dailyData.sun.startDate)} - {formatDate(dailyData.sun.endDate)}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-base leading-relaxed text-foreground/90">
+              {dailyData.sun.message}
+            </p>
+            
+            {/* Deities Table */}
+            <div className="bg-amber-500/5 rounded-lg p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Panteões com energia similar:</p>
+              <div className="flex flex-wrap gap-2">
+                {dailyData.sun.deities.map((d, i) => (
+                  <span key={i} className="text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    {d.pantheon}: {d.deity}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Moon of Today Card */}
+      {dailyData?.moon && (
+        <Card className="cosmic-card fade-in bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 flex items-center justify-center">
+                <span className="text-4xl">{getMoonPhaseEmoji(dailyData.moon.phase)}</span>
+              </div>
+              <div className="flex-1">
+                <CardTitle className="font-serif text-xl">Lua em {dailyData.moon.sign}</CardTitle>
+                <CardDescription>
+                  {dailyData.moon.phase} • {dailyData.moon.degree}° • {formatDate(dailyData.moon.startDate)} - {formatDate(dailyData.moon.endDate)}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-base leading-relaxed text-foreground/90">
+              {dailyData.moon.message}
+            </p>
+            
+            {/* Deities Table */}
+            <div className="bg-indigo-500/5 rounded-lg p-3">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Panteões com energia similar:</p>
+              <div className="flex flex-wrap gap-2">
+                {dailyData.moon.deities.map((d, i) => (
+                  <span key={i} className="text-xs px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    {d.pantheon}: {d.deity}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Transits Section Header */}
+      <h2 className="font-serif text-lg text-muted-foreground pt-4">Trânsitos Importantes</h2>
 
       {/* Free Transit Cards */}
       {transits.slice(0, FREE_TRANSITS).map((transit, index) => {
@@ -266,7 +362,7 @@ const Home = () => {
                 {transit.message}
               </p>
               <div className="bg-primary/10 border-l-4 border-primary rounded-r-lg p-3">
-                <p className="text-sm font-medium text-primary mb-1">💡 Conselho Prático</p>
+                <p className="text-sm font-medium text-primary mb-1">💡 Conselho Personalizado</p>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {transit.advice}
                 </p>
@@ -340,7 +436,7 @@ const Home = () => {
                 {transit.message.substring(0, 60)}...
               </p>
               <div className="bg-primary/10 border-l-4 border-primary rounded-r-lg p-3 blur-[4px]">
-                <p className="text-sm font-medium text-primary mb-1">💡 Conselho Prático</p>
+                <p className="text-sm font-medium text-primary mb-1">💡 Conselho Personalizado</p>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {transit.advice.substring(0, 40)}...
                 </p>
@@ -359,7 +455,7 @@ const Home = () => {
               <h3 className="text-xl font-serif mb-2">Desbloqueie Todos os Trânsitos</h3>
               <p className="text-sm text-muted-foreground max-w-md mx-auto">
                 Acesse análises completas de todos os {transits.length} trânsitos planetários, 
-                com conselhos personalizados para cada área da sua vida.
+                com conselhos personalizados baseados no seu mapa natal.
               </p>
             </div>
             <Button 
